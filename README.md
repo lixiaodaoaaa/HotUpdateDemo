@@ -51,7 +51,9 @@ public  class  MainActivity extends AppCompatActivity {
 下载Demo代码之后，会在assets下看到一个fix.dex文件
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093843.png)
 ----
+
 按照正常的逻辑，我们做bug修复一定是把fix.dex放到服务器上， app去服务器下载它，然后存放在app私有目录，重启app之后，fix.dex生效, 当加载到这个类的时候，就会去读fix.dex中当时打包的已修复bug的类. 但是，我这里为了演示方便，直接放在assets，然后使用 项目中的 AssetsFileUtil类 用io流将它读写到 app私有目录下.
+
 ### 演示方法：
 
 1. 删掉 fix.dex ，运行app，你看到 手机屏幕中心 出现："卧槽，有bug!"
@@ -140,6 +142,7 @@ OK,理解了源码的逻辑，那我们可以动手了。来解析SDK 23的 hook
 确定思路，我们要改变app启动之后，自带的ClassLoader对象（具体实现类是PathClassLoader ）中 DexPathList 中 Element[] element 的实际值。
 
 #### 具体操作步骤
+
 1.取得PathClassLoader的pathList的属性
 2.取得PathClassLoader的pathList的属性真实值（得到一个DexPathList对象）
 3.获得DexPathList中的dexElements 属性
@@ -158,7 +161,7 @@ OK,理解了源码的逻辑，那我们可以动手了。来解析SDK 23的 hook
 
 上面的内容，读起来可能会有一些疑问，我预估到了一些，将答案写在下面
 
-* 1. 当我们需要反射获得一个类的某个方法或者成员变量时，我们只想拿getDeclareXX，因为我们只想拿本类中的成员，但是仅仅getDeclareXX不能跨越继承关系 拿到 父类中的非私有成员，所以我写了ReflectionUtil.java，支持跨越继承关系 拿到父类的非私有成员。
-* 2. 这种热修复，是不是下载的包会很大，和原先的apk差不多大？答案是，NO，我们只需要将我们修复bug之后的补丁dex下载到设备，让app重启，去读取这个dex即可。补丁包很小，甚至只有1K.
-* 3. 这种修复方式必须重启么？ 是的，必须重启，当然，存在不需要重启就可以修复bug的方法，那种方法叫做instant run方案,本文不涉及。而，当前这种方案叫做：MultipleDex 即，多dex方案。
-* 4.* 为什么要对SDK 23 ,19,14 写不同的hook代码？因为SDK版本的变迁，导致 一些类的关系，变量名，方法名，方法参数（个数和类型）都会发生变化，所以，要针对各个变迁的版本进行兼容。
+1. 当我们需要反射获得一个类的某个方法或者成员变量时，我们只想拿getDeclareXX，因为我们只想拿本类中的成员，但是仅仅getDeclareXX不能跨越继承关系 拿到 父类中的非私有成员，所以我写了ReflectionUtil.java，支持跨越继承关系 拿到父类的非私有成员。
+2. 这种热修复，是不是下载的包会很大，和原先的apk差不多大？答案是，NO，我们只需要将我们修复bug之后的补丁dex下载到设备，让app重启，去读取这个dex即可。补丁包很小，甚至只有1K.
+3. 这种修复方式必须重启么？ 是的，必须重启，当然，存在不需要重启就可以修复bug的方法，那种方法叫做instant run方案,本文不涉及。而，当前这种方案叫做：MultipleDex 即，多dex方案。
+4. 为什么要对SDK 23 ,19,14 写不同的hook代码？因为SDK版本的变迁，导致 一些类的关系，变量名，方法名，方法参数（个数和类型）都会发生变化，所以，要针对各个变迁的版本进行兼容。
