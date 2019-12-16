@@ -92,8 +92,8 @@ public class ClassLoaderHookHelper {
 Multidex热修复核心技术
 >其实 热修复的核心技术，就一句话， HookClassLoader ,但是要深入了解它，需要相当多的基础知识，下面列举出必须要知道的一些东西。
 
-基础知识预备
-1.Dex文件是什么？
+### 基础知识预备
+####1.Dex文件是什么？
 我们写安卓，目前还是用 java比较多，就算是用 kotlin，它最终也是要转换成 java来运行。 java文件，被编译成 class之后，多个 class文件，会被打包成 classes.dex，被放到 apk中，安卓设备拿到 apk，去安装解析( 预编译balabala...)，当我们运行 app时， app的程序逻辑全都是在classes.dex中。所以， dex文件是什么？一句话， dex文件是 android app的源代码的最终打包
 
 2.Dex文件如何生成？
@@ -119,25 +119,24 @@ android里面 ClassLoader的作用，是将 dex文件中的类，加载到内存
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216094101.png)
 
 红字注解，很容易读懂 ClassLoader去 load一个 class的过程.
-hook思路
+
+### hook思路
 OK，现在可以来解读我是如何去hook ClassLoader的了. 解读之前，先弄清楚，我为何 要 hookClassLoader，为什么 hook了它之后，我的 fix.dex就能发挥作用？先解决这个疑问，既然是 hook，那么自然要读懂源码，因为 hook就是在理解源码思维的前提下，更改源码逻辑。 一张图解决你的疑问：
 
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216094126.png)
 
 
-按照上面图，去追踪源码，会发现， ClassLoader最终会从 DexFile对象中去获得一个 Class对象。并且在 DexPathList类中 findClass的时候，存在一个 Element数组的遍历。这就意味着，如果存在多个 dex文件，多个 dex文件中都存在同样一个 class，那么它会从第一个开始找，如果找到了，就会立即返回。如果没找到，就往下一个dex去找。
-
-也就是说，如果我们可以在 这个数组中插入我们自己的修复bug的 fix.dex，那我们就可以让我们 已经修复bug的补丁类发挥作用,让类加载器优先读取我们的 补丁类.
+按照上面图，去追踪源码，会发现， ClassLoader最终会从 DexFile对象中去获得一个 Class对象。并且在 DexPathList类中 findClass的时候，存在一个 Element数组的遍历。这就意味着，如果存在多个 dex文件，多个 dex文件中都存在同样一个 class，那么它会从第一个开始找，如果找到了，就会立即返回。如果没找到，就往下一个dex去找。也就是说，如果我们可以在 这个数组中插入我们自己的修复bug的 fix.dex，那我们就可以让我们 已经修复bug的补丁类发挥作用,让类加载器优先读取我们的 补丁类.
 
 OK,理解了源码的逻辑，那我们可以动手了。来解析SDK 23的 hookClassLoader过程吧！
 
 确定思路，我们要改变app启动之后，自带的ClassLoader对象（具体实现类是PathClassLoader ）中 DexPathList 中 Element[] element 的实际值。
 那么，步骤：
 
-1.取得PathClassLoader的pathList的属性
-2.取得PathClassLoader的pathList的属性真实值（得到一个DexPathList对象）
-3.获得DexPathList中的dexElements 属性
-4.获得DexPathList对象中dexElements 属性的真实值(它是一个Element数组) 做完这4个步骤，我们得到下面的代码
+* 1.取得PathClassLoader的pathList的属性
+* 2.取得PathClassLoader的pathList的属性真实值（得到一个DexPathList对象）
+* 3.获得DexPathList中的dexElements 属性
+* 4.获得DexPathList对象中dexElements 属性的真实值(它是一个Element数组) 做完这4个步骤，我们得到下面的代码
 
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216094159.png)
 
@@ -152,7 +151,7 @@ OK,理解了源码的逻辑，那我们可以动手了。来解析SDK 23的 hook
 
 上面的内容，读起来可能会有一些疑问，我预估到了一些，将答案写在下面
 
-1. 当我们需要反射获得一个类的某个方法或者成员变量时，我们只想拿getDeclareXX，因为我们只想拿本类中的成员，但是仅仅getDeclareXX不能跨越继承关系 拿到 父类中的非私有成员，所以我写了ReflectionUtil.java，支持跨越继承关系 拿到父类的非私有成员。
-2. 这种热修复，是不是下载的包会很大，和原先的apk差不多大？答案是，NO，我们只需要将我们修复bug之后的补丁dex下载到设备，让app重启，去读取这个dex即可。补丁包很小，甚至只有1K.
-3. 这种修复方式必须重启么？ 是的，必须重启，当然，存在不需要重启就可以修复bug的方法，那种方法叫做instant run方案,本文不涉及。而，当前这种方案叫做：MultipleDex 即，多dex方案。
-4.* 为什么要对SDK 23 ,19,14 写不同的hook代码？因为SDK版本的变迁，导致 一些类的关系，变量名，方法名，方法参数（个数和类型）都会发生变化，所以，要针对各个变迁的版本进行兼容。
+* 1. 当我们需要反射获得一个类的某个方法或者成员变量时，我们只想拿getDeclareXX，因为我们只想拿本类中的成员，但是仅仅getDeclareXX不能跨越继承关系 拿到 父类中的非私有成员，所以我写了ReflectionUtil.java，支持跨越继承关系 拿到父类的非私有成员。
+* 2. 这种热修复，是不是下载的包会很大，和原先的apk差不多大？答案是，NO，我们只需要将我们修复bug之后的补丁dex下载到设备，让app重启，去读取这个dex即可。补丁包很小，甚至只有1K.
+* 3. 这种修复方式必须重启么？ 是的，必须重启，当然，存在不需要重启就可以修复bug的方法，那种方法叫做instant run方案,本文不涉及。而，当前这种方案叫做：MultipleDex 即，多dex方案。
+* 4.* 为什么要对SDK 23 ,19,14 写不同的hook代码？因为SDK版本的变迁，导致 一些类的关系，变量名，方法名，方法参数（个数和类型）都会发生变化，所以，要针对各个变迁的版本进行兼容。
