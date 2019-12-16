@@ -2,20 +2,20 @@
 
 ## 前言
 
-    > 做程序开发，基础很重要。同样是拧螺丝人家拧出来的可以经久不坏，你拧出来的遇到点风浪就开始颤抖，可见基本功的重要性。再复杂的技术，也是由一个一个简单的逻辑构成。先了解核心基础，才能更好理解前沿高新技术。
+   做程序开发，基础很重要。同样是拧螺丝人家拧出来的可以经久不坏，你拧出来的遇到点风浪就开始颤抖，可见基本功的重要性。再复杂的技术，也是由一个一个简单的逻辑构成。先了解核心基础，才能更好理解前沿高新技术。
 
 ## 正文大纲
  1.   先看效果{github Demo地址}：(https://github.com/18598925736/HotUpdateDemo)
  2.  Demo使用方法
  3.  Demo源码概览
  4.  热修复核心技术
-
+----
 ##  基础知识预备
  
  about  hook思路
 
 热更新技术，不是新话题。目前最热门的热更新由两种，一种是腾讯tinker为代表的 需重启app的热更新，一种是美团app为代表的instant Run，无需重启app. 今天先探究 前者的核心原理。
-
+----
 先看效果[github Demo地址] ：(https://github.com/18598925736/HotUpdateDemo)
 假如说这是我们的app界面，这个界面有个bug，我们直接用一个 TextView来表示
 
@@ -39,22 +39,25 @@ public  class  MainActivity extends AppCompatActivity {
 }
 ```
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093732.png)
+----
 这个时候，机智的程序员用最快的方式修复了这个bug，也只是改了一行代码：
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093752.png)
+----
 那么，产品已经在线上，怎么办？我们通过后台，向app推送了一个 fix.dex文件, 等这个文件下载完成，app提示用户，发现新的更新，需要重启app. 待用户重启，代码修复 即会生效。无需发布新版本！
-
+----
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093824.png)
 
-Demo使用方法
+### Demo使用方法
 
 下载Demo代码之后，会在assets下看到一个fix.dex文件
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093843.png)
+----
 按照正常的逻辑，我们做bug修复一定是把fix.dex放到服务器上， app去服务器下载它，然后存放在app私有目录，重启app之后，fix.dex生效, 当加载到这个类的时候，就会去读fix.dex中当时打包的已修复bug的类. 但是，我这里为了演示方便，直接放在assets，然后使用 项目中的 AssetsFileUtil类 用io流将它读写到 app私有目录下.
-演示方法：
+### 演示方法：
 
-删掉 fix.dex ，运行app，你看到 手机屏幕中心 出现："卧槽，有bug!"
-还原 fix.dex ，运行app，你看到 手机屏幕中心 出现："嘿嘿，bug已修复"
-起作用的是谁？就是这个fix.dex文件.
+1. 删掉 fix.dex ，运行app，你看到 手机屏幕中心 出现："卧槽，有bug!"
+2. 还原 fix.dex ，运行app，你看到 手机屏幕中心 出现："嘿嘿，bug已修复"
+3. 起作用的是谁？就是这个fix.dex文件.
 
 Demo源码概览
 
