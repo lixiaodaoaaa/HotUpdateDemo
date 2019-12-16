@@ -19,6 +19,7 @@
 假如说这是我们的app界面，这个界面有个bug，我们直接用一个 TextView来表示
 
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093644.png)
+
 然而，我们的开发人员发现了这个bug，但是产品已经上线。这时候，由于引起bug的 代码，只有一行，
 
 
@@ -38,8 +39,10 @@ public  class  MainActivity extends AppCompatActivity {
 }
 ```
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093732.png)
+
 ----
 这个时候，机智的程序员用最快的方式修复了这个bug，也只是改了一行代码：
+
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093752.png)
 ----
 那么，产品已经在线上，怎么办？我们通过后台，向app推送了一个 fix.dex文件, 等这个文件下载完成，app提示用户，发现新的更新，需要重启app. 待用户重启，代码修复 即会生效。无需发布新版本！
@@ -49,6 +52,7 @@ public  class  MainActivity extends AppCompatActivity {
 ### Demo使用方法
 
 下载Demo代码之后，会在assets下看到一个fix.dex文件
+
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093843.png)
 ----
 
