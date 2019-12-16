@@ -67,7 +67,9 @@ public  class  MainActivity extends AppCompatActivity {
 Demo源码概览
 
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093910.png)
-如上图所示： 核心类其实就只有一个: ClassLoaderHookHelper ，它 就是 让 fix.dex这个补丁发挥作用的 " 幕后大佬". 这个核心类：有3个方法，分别是在不同的系统版本上，来对源码程序逻辑进行 hook,提高hook的兼容性.
+---
+如上图所示： 核心类其实就只有一个: ClassLoaderHookHelper ，
+它 就是 让 fix.dex这个补丁发挥作用的 " 幕后大佬". 这个核心类：有3个方法，分别是在不同的系统版本上，来对源码程序逻辑进行 hook,提高hook的兼容性.
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093932.png)
 
 下面是完整 ClassLoaderHookHelper代码 以及 使用它的 MyApp完整代码 ：
