@@ -91,29 +91,30 @@ public class ClassLoaderHookHelper {
    }
 }
 ```
-Multidex热修复核心技术
+#### Multidex热修复核心技术
 >其实 热修复的核心技术，就一句话， HookClassLoader ,但是要深入了解它，需要相当多的基础知识，下面列举出必须要知道的一些东西。
 
 ### 基础知识预备
-####1.Dex文件是什么？
+####  Dex文件是什么？
 我们写安卓，目前还是用 java比较多，就算是用 kotlin，它最终也是要转换成 java来运行。 java文件，被编译成 class之后，多个 class文件，会被打包成 classes.dex，被放到 apk中，安卓设备拿到 apk，去安装解析( 预编译balabala...)，当我们运行 app时， app的程序逻辑全都是在classes.dex中。所以， dex文件是什么？一句话， dex文件是 android app的源代码的最终打包
 
-2.Dex文件如何生成？
+#### Dex文件如何生成？
 androidStudio 打包 apk的时候会生成 Dex，其实它使用的是 SDK的 dx命令，我们可以用 dx命令自己去打包想要打包的 class. 命令格式为：dx --dex --output=output.dex xxxx.class 将上面的output 和 xxxx换成你想要的文件名即可。
 
 注：dx.bat在 安卓 SDK的目录下：比如我d的`C:\XXXXX\AndroidStudioAbout\sdk1\build-tools\28.0.3\dx.bat
 
-3.ClassLoader是什么？
+#### ClassLoader是什么？
 ClassLoader来自 jdk，翻译为 ：类加载器，用于将 class文件中的类，加载到内存中，生成 class对象。只有存在了 Class对象，我们才可以创建我们想要的对象。 android SDK继承了JDK的 classLoader，创造出了新的 ClassLoader子类。下图表示了 android9.0-28 所有的ClassLoader直接或者间接子类.
 
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216094040.png)
 
-比较多的是 BaseDexClassLoader， DexClassLoader , PathClassLoader, 其他这些，应该是谷歌大佬 创造出来新的 类加载器子类吧，还没研究过。
-注： 关于 DexClassLoader和 PathClassLoader ，网上资料有个误区，应该不少人都认为， PathClassLoader 用于加载 app内部的 dex文件， DexClassLoader用于加载外部的 dex文件，但是其实只要看一眼 这两个类的关系，就会发现，它们都是继承自 BaseDexClassLoader，他们的构造函数内部都会去执行父类的构造函数。他们只有一个差别，那就是 PathClssLoader不用传 optimizedDirectory这个参数，但是 DexClassLoader必须传。这个参数的作用是，传入一个 dex优化之后的存放目录。而事实上，虽然 PathClassLoader不要求传这个 optimizedDirectory，但是它实际上是给了一个默认值。emmmm............所以不要再认为 PathClassLoader不能加载外部的 dex了，它只是没有让你传 optimizedDirectory而已。
+  比较多的是 BaseDexClassLoader， DexClassLoader , PathClassLoader, 其他这些，应该是谷歌大佬 创造出来新的 类加载器子类吧，还没研究过。
+注： 关于 DexClassLoader和 PathClassLoader ，网上资料有个误区，应该不少人都认为， PathClassLoader 用于加载 app内部的 dex文件， DexClassLoader用于加载外部的 dex文件，但是其实只要看一眼 这两个类的关系，就会发现，它们都是继承自 BaseDexClassLoader，他们的构造函数内部都会去执行父类的构造函数。
+  他们只有一个差别，那就是 PathClssLoader不用传 optimizedDirectory这个参数，但是 DexClassLoader必须传。这个参数的作用是，传入一个 dex优化之后的存放目录。而事实上，虽然 PathClassLoader不要求传这个 optimizedDirectory，但是它实际上是给了一个默认值。emmmm............所以不要再认为 PathClassLoader不能加载外部的 dex了，它只是没有让你传 optimizedDirectory而已。
 
 另外： BootClassLoader用于加载 AndroidFramework层class文件( SDK中没有这个BootClassLoader，也是很奇怪) PathClassLoader 是用于Android应用程序类的加载器，可以加载指定的 dex，以及 jar、 zip、 apk中的 classes.dex。 DexClassLoader 可以加载指定的 dex，以及 jar、 zip、 apk中的 classes.dex。
 
-4.ClassLoader的双亲委托机制是什么？
+#### ClassLoader的双亲委托机制是什么？
 android里面 ClassLoader的作用，是将 dex文件中的类，加载到内存中，生成 Class对象，供我们使用 （举个例子：我写了一个 A类，app运行起来之后，当我需要new 一个 A， ClassLoader首先会帮我查找 A的 Class对象是否存在，如果存在，就直接给我 Class对象，让我拿去 new A，如果不存在，就会出创建这个 A的 Class对象。） 这个查找的过程，就遵循 双亲委托机制。一句话解释 双亲委托机制：某个 类加载器在加载某个 类的时候，首先会将 这件事委托给 parent类加载器，依次递归，如果 parent类加载器可以完成加载，就会直接返回 Class对象。如果 parent找不到或者没有父了，就会 自己加载。
 
 下图是 安卓源码 ClassLoader.java:
@@ -123,22 +124,26 @@ android里面 ClassLoader的作用，是将 dex文件中的类，加载到内存
 红字注解，很容易读懂 ClassLoader去 load一个 class的过程.
 
 ### hook思路
-OK，现在可以来解读我是如何去hook ClassLoader的了. 解读之前，先弄清楚，我为何 要 hookClassLoader，为什么 hook了它之后，我的 fix.dex就能发挥作用？先解决这个疑问，既然是 hook，那么自然要读懂源码，因为 hook就是在理解源码思维的前提下，更改源码逻辑。 一张图解决你的疑问：
+OK，现在可以来解读我是如何去hook ClassLoader的了. 解读之前，先弄清楚，我为何 要 hookClassLoader，为什么 hook了它之后，我的 fix.dex就能发挥作用？先解决这个疑问，既然是 hook，那么自然要读懂源码，因为 hook就是在理解源码思维的前提下，更改源码逻辑。 
+
+一张图解决你的疑问：
 
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216094126.png)
 
+---
+按照上面图，去追踪源码，会发现， ClassLoader最终会从 DexFile对象中去获得一个 Class对象。并且在 DexPathList类中 findClass的时候，存在一个 Element数组的遍历。这就意味着，如果存在多个 dex文件，多个 dex文件中都存在同样一个 class，那么它会从第一个开始找，如果找到了，就会立即返回。
 
-按照上面图，去追踪源码，会发现， ClassLoader最终会从 DexFile对象中去获得一个 Class对象。并且在 DexPathList类中 findClass的时候，存在一个 Element数组的遍历。这就意味着，如果存在多个 dex文件，多个 dex文件中都存在同样一个 class，那么它会从第一个开始找，如果找到了，就会立即返回。如果没找到，就往下一个dex去找。也就是说，如果我们可以在 这个数组中插入我们自己的修复bug的 fix.dex，那我们就可以让我们 已经修复bug的补丁类发挥作用,让类加载器优先读取我们的 补丁类.
+  如果没找到，就往下一个dex去找。也就是说，如果我们可以在 这个数组中插入我们自己的修复bug的 fix.dex，那我们就可以让我们 已经修复bug的补丁类发挥作用,让类加载器优先读取我们的 补丁类.
 
 OK,理解了源码的逻辑，那我们可以动手了。来解析SDK 23的 hookClassLoader过程吧！
 
 确定思路，我们要改变app启动之后，自带的ClassLoader对象（具体实现类是PathClassLoader ）中 DexPathList 中 Element[] element 的实际值。
-那么，步骤：
 
-* 1.取得PathClassLoader的pathList的属性
-* 2.取得PathClassLoader的pathList的属性真实值（得到一个DexPathList对象）
-* 3.获得DexPathList中的dexElements 属性
-* 4.获得DexPathList对象中dexElements 属性的真实值(它是一个Element数组) 做完这4个步骤，我们得到下面的代码
+#### 具体操作步骤
+1.取得PathClassLoader的pathList的属性
+2.取得PathClassLoader的pathList的属性真实值（得到一个DexPathList对象）
+3.获得DexPathList中的dexElements 属性
+4.获得DexPathList对象中dexElements 属性的真实值(它是一个Element数组) 做完这4个步骤，我们得到下面的代码
 
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216094159.png)
 
