@@ -10,13 +10,12 @@
  3.  Demo源码概览
  4.  热修复核心技术
 ----
-##  基础知识预备
- 
- about  hook思路
+###   基础知识预备
 
+###  about  hook思路
 热更新技术，不是新话题。目前最热门的热更新由两种，一种是腾讯tinker为代表的 需重启app的热更新，一种是美团app为代表的instant Run，无需重启app. 今天先探究 前者的核心原理。
 ----
-先看效果[github Demo地址] ：(https://github.com/18598925736/HotUpdateDemo)
+
 假如说这是我们的app界面，这个界面有个bug，我们直接用一个 TextView来表示
 
 ![](https://raw.githubusercontent.com/lixiaodaoaaa/publicSharePic/master/20191216093644.png)
